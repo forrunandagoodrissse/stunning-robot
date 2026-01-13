@@ -1,8 +1,8 @@
-// X/Twitter OAuth 2.0 with PKCE implementation
+// X OAuth 2.0 with PKCE implementation
 
-const X_AUTH_URL = 'https://twitter.com/i/oauth2/authorize';
-const X_TOKEN_URL = 'https://api.twitter.com/2/oauth2/token';
-const X_API_URL = 'https://api.twitter.com/2';
+const X_AUTH_URL = 'https://x.com/i/oauth2/authorize';
+const X_TOKEN_URL = 'https://api.x.com/2/oauth2/token';
+const X_API_URL = 'https://api.x.com/2';
 
 // Generate cryptographically secure random string
 function generateRandomString(length: number): string {
