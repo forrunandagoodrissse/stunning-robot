@@ -39,7 +39,7 @@ X_CLIENT_SECRET=your_client_secret_here
 # Session encryption secret (generate a random 32+ character string)
 SESSION_SECRET=your_super_secret_session_key_here_32_chars_min
 
-# Your app URL
+# Your app URL ~
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
