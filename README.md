@@ -85,7 +85,7 @@ This app requests the following scopes:
 - **Styling**: CSS (no dependencies)
 - **Deployment**: Vercel
 
-## API Routes
+## API Routess
 
 | Route | Method | Description |
 |-------|--------|-------------|
