@@ -1,0 +1,16 @@
+{
+  "name": "Thread Composer",
+  "short_name": "Threads",
+  "description": "Create and post X threads effortlessly",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#1d9bf0",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -25,7 +25,6 @@ export default function Home() {
   useEffect(() => {
     checkAuth();
     
-    // Check for error in URL
     const params = new URLSearchParams(window.location.search);
     const errorParam = params.get('error');
     if (errorParam) {
@@ -115,7 +114,7 @@ export default function Home() {
       if (res.ok) {
         setStatus({ 
           type: 'success', 
-          message: `Thread posted successfully! ${tweets.length} tweet${tweets.length > 1 ? 's' : ''} published.` 
+          message: `Thread posted! ${tweets.length} tweet${tweets.length > 1 ? 's' : ''} published.` 
         });
         setTweets([{ id: '1', text: '' }]);
       } else {
@@ -149,44 +148,57 @@ export default function Home() {
   if (!user) {
     return (
       <div className="login-page">
-        <div className="login-card">
-          <div className="login-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
-              <path d="M3 17h18v2H3v-2zm0-7h18v2H3v-2zm0-7h18v2H3V3z"/>
-            </svg>
-          </div>
-          
-          <h1>Thread Composer</h1>
-          <p className="subtitle">Create and post X threads with ease</p>
-          
-          {error && <div className="login-error">{error}</div>}
-          
-          <button className="btn btn-primary login-btn" onClick={handleLogin}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-            </svg>
-            Sign in with X
-          </button>
-          
-          <div className="login-features">
-            <div className="login-feature">
-              <span className="feature-icon">✓</span>
-              <span>Compose multi-tweet threads</span>
-            </div>
-            <div className="login-feature">
-              <span className="feature-icon">✓</span>
-              <span>Preview before posting</span>
-            </div>
-            <div className="login-feature">
-              <span className="feature-icon">✓</span>
-              <span>Post entire threads at once</span>
-            </div>
-            <div className="login-feature">
-              <span className="feature-icon">✓</span>
-              <span>Character count for each tweet</span>
+        <div className="login-hero">
+          <div className="login-container">
+            <div className="login-card">
+              <div className="login-icon">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="white">
+                  <path d="M3 17h18v2H3v-2zm0-7h18v2H3v-2zm0-7h18v2H3V3z"/>
+                </svg>
+              </div>
+              
+              <h1>Thread Composer</h1>
+              <p className="subtitle">Create and post beautiful threads to X with ease</p>
+              
+              {error && <div className="login-error">{error}</div>}
+              
+              <button className="btn btn-primary login-btn" onClick={handleLogin}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                Sign in with X
+              </button>
+              
+              <div className="login-features">
+                <div className="login-feature">
+                  <span className="feature-icon">✓</span>
+                  <span>Compose multi-tweet threads</span>
+                </div>
+                <div className="login-feature">
+                  <span className="feature-icon">✓</span>
+                  <span>Preview before posting</span>
+                </div>
+                <div className="login-feature">
+                  <span className="feature-icon">✓</span>
+                  <span>Post entire threads at once</span>
+                </div>
+                <div className="login-feature">
+                  <span className="feature-icon">✓</span>
+                  <span>Real-time character counter</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+        
+        <footer className="login-footer">
+          <div className="login-footer-inner">
+            <p>
+              Thread Composer uses X OAuth to securely connect your account.
+              <br />We only request permission to post on your behalf.
+            </p>
+          </div>
+        </footer>
       </div>
     );
   }
@@ -300,6 +312,20 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      <footer className="footer">
+        <div className="footer-inner">
+          <div className="footer-brand">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 17h18v2H3v-2zm0-7h18v2H3v-2zm0-7h18v2H3V3z"/>
+            </svg>
+            <span>Thread Composer</span>
+          </div>
+          <div className="footer-links">
+            <span className="footer-link">Signed in as @{user.username}</span>
+          </div>
+        </div>
+      </footer>
 
       {posting && (
         <div className="posting-overlay">
