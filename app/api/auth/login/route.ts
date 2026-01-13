@@ -29,9 +29,18 @@ export async function GET() {
     
     return NextResponse.redirect(authUrl);
   } catch (error: any) {
-    console.error('Login error:', error?.message || error);
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}?error=login_failed&detail=${encodeURIComponent(error?.message || 'unknown')}`
+    const errorMessage = error?.message || String(error);
+    console.error('Login error:', errorMessage);
+    console.error('Full error:', error);
+    
+    // Return error details in response for debugging
+    return NextResponse.json(
+      { 
+        error: 'login_failed', 
+        detail: errorMessage,
+        hint: 'Check X Developer Portal - OAuth 1.0a must be enabled and callback URL must match'
+      },
+      { status: 500 }
     );
   }
 }

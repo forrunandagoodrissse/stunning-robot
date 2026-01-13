@@ -105,9 +105,10 @@ export async function getRequestToken(): Promise<{
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    console.error('Request token error:', error);
-    throw new Error('Failed to get request token');
+    const errorText = await response.text();
+    console.error('Request token error:', errorText);
+    console.error('Response status:', response.status);
+    throw new Error(`Failed to get request token: ${response.status} - ${errorText}`);
   }
 
   const text = await response.text();
