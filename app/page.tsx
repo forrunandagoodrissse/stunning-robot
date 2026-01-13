@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 interface User {
@@ -9,26 +9,38 @@ interface User {
   name: string;
 }
 
-interface TweetDraft {
-  id: string;
-  text: string;
-}
+const TONES = [
+  { id: 'professional', label: 'Professional' },
+  { id: 'casual', label: 'Casual' },
+  { id: 'witty', label: 'Witty' },
+  { id: 'inspiring', label: 'Inspiring' },
+  { id: 'controversial', label: 'Hot Take' },
+  { id: 'informative', label: 'Informative' },
+  { id: 'storytelling', label: 'Story' },
+  { id: 'promotional', label: 'Promo' },
+];
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tweets, setTweets] = useState<TweetDraft[]>([{ id: '1', text: '' }]);
+
+  // Generator state
+  const [topic, setTopic] = useState('');
+  const [tone, setTone] = useState('casual');
+  const [generating, setGenerating] = useState(false);
+  const [results, setResults] = useState<string[]>([]);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [editText, setEditText] = useState('');
   const [posting, setPosting] = useState(false);
-  const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>({});
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
   useEffect(() => {
     checkAuth();
     const params = new URLSearchParams(window.location.search);
-    const errorParam = params.get('error');
-    if (errorParam) {
-      setError(`Authentication failed: ${errorParam}`);
+    const err = params.get('error');
+    if (err) {
+      setError(`Auth failed: ${err}`);
       window.history.replaceState({}, '', '/');
     }
   }, []);
@@ -38,9 +50,7 @@ export default function Home() {
       const res = await fetch('/api/auth/me');
       const data = await res.json();
       if (data.user) setUser(data.user);
-    } catch (err) {
-      console.error(err);
-    } finally {
+    } catch {} finally {
       setLoading(false);
     }
   };
@@ -52,61 +62,75 @@ export default function Home() {
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     setUser(null);
-    setTweets([{ id: '1', text: '' }]);
-    setStatus(null);
+    resetGenerator();
   };
 
-  const updateTweet = (id: string, text: string) => {
-    setTweets(tweets.map(t => t.id === id ? { ...t, text } : t));
+  const resetGenerator = () => {
+    setTopic('');
+    setResults([]);
+    setSelected(null);
+    setEditText('');
+    setToast(null);
   };
 
-  const addTweet = () => {
-    const newId = Date.now().toString();
-    setTweets([...tweets, { id: newId, text: '' }]);
-    setTimeout(() => textareaRefs.current[newId]?.focus(), 50);
-  };
+  const handleGenerate = async () => {
+    if (!topic.trim()) return;
+    setGenerating(true);
+    setResults([]);
+    setSelected(null);
+    setEditText('');
+    setToast(null);
 
-  const removeTweet = (id: string) => {
-    if (tweets.length > 1) setTweets(tweets.filter(t => t.id !== id));
-  };
-
-  const handleTextareaChange = (id: string, e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const textarea = e.target;
-    updateTweet(id, textarea.value);
-    textarea.style.height = 'auto';
-    textarea.style.height = textarea.scrollHeight + 'px';
-  };
-
-  const getCharCount = (text: string) => 280 - text.length;
-  const getCharClass = (text: string) => {
-    const r = getCharCount(text);
-    if (r < 0) return 'over';
-    if (r < 20) return 'warn';
-    return '';
-  };
-
-  const canPost = () => tweets.every(t => t.text.trim().length > 0 && t.text.length <= 280);
-
-  const handlePost = async () => {
-    if (!canPost()) return;
-    setPosting(true);
-    setStatus(null);
     try {
-      const res = await fetch('/api/thread', {
+      const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tweets: tweets.map(t => t.text) }),
+        body: JSON.stringify({ topic, tone }),
+      });
+      const data = await res.json();
+      if (res.ok && data.tweets) {
+        setResults(data.tweets);
+      } else {
+        setToast({ type: 'error', msg: data.error || 'Generation failed' });
+      }
+    } catch {
+      setToast({ type: 'error', msg: 'Network error' });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const selectResult = (i: number) => {
+    setSelected(i);
+    setEditText(results[i]);
+  };
+
+  const charCount = 280 - editText.length;
+  const charClass = charCount < 0 ? 'over' : charCount < 20 ? 'warn' : '';
+  const canPost = editText.trim().length > 0 && editText.length <= 280;
+
+  const handlePost = async () => {
+    if (!canPost) return;
+    setPosting(true);
+    try {
+      const res = await fetch('/api/tweet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: editText }),
       });
       const data = await res.json();
       if (res.ok) {
-        setStatus({ type: 'success', message: `Thread posted! ${tweets.length} tweet${tweets.length > 1 ? 's' : ''} published.` });
-        setTweets([{ id: '1', text: '' }]);
+        setToast({ type: 'success', msg: 'Tweet posted!' });
+        setResults([]);
+        setSelected(null);
+        setEditText('');
+        setTopic('');
       } else {
         if (res.status === 401) { setUser(null); return; }
-        setStatus({ type: 'error', message: data.error || 'Failed to post thread' });
+        setToast({ type: 'error', msg: data.error || 'Post failed' });
       }
     } catch {
-      setStatus({ type: 'error', message: 'Network error. Please try again.' });
+      setToast({ type: 'error', msg: 'Network error' });
     } finally {
       setPosting(false);
     }
@@ -116,20 +140,18 @@ export default function Home() {
     return <div className="loading-screen"><div className="spinner" /></div>;
   }
 
-  // Landing page (not logged in)
+  // Landing
   if (!user) {
     return (
       <div className="landing">
-        {error && <div className="landing-error">{error}</div>}
-        
-        <nav className="landing-nav">
-          <div className="nav-logo">
-            <div className="nav-logo-icon">
-              <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
-                <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
-              </svg>
+        {error && <div className="error-banner">{error}</div>}
+
+        <nav className="nav">
+          <div className="nav-brand">
+            <div className="nav-icon">
+              <svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M12 2L2 19h20L12 2zm0 4l7 11H5l7-11z"/></svg>
             </div>
-            <span>Thread Composer</span>
+            <span>TweetForge</span>
           </div>
           <div className="nav-links">
             <Link href="/terms" className="nav-link">Terms</Link>
@@ -138,148 +160,176 @@ export default function Home() {
         </nav>
 
         <section className="hero">
-          <div className="hero-grid" />
+          <div className="hero-glow" />
           <div className="hero-content">
-            <div className="hero-badge">
-              <span className="hero-badge-dot" />
-              Now with thread scheduling
-            </div>
-            <h1>Write threads that <em>resonate</em></h1>
-            <p className="hero-subtitle">
-              The simplest way to compose, preview, and publish multi-tweet threads to X. 
-              No distractions, just your words.
+            <div className="hero-pill">✨ AI-Powered</div>
+            <h1>Generate tweets that <span className="gradient">go viral</span></h1>
+            <p className="hero-sub">
+              Enter your idea, pick a tone, and let AI craft the perfect tweet. 
+              Edit, refine, and post directly to X.
             </p>
             <div className="hero-cta">
-              <button className="btn-hero" onClick={handleLogin}>
+              <button className="btn-cta" onClick={handleLogin}>
                 <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                 </svg>
                 Sign in with X
               </button>
-              <p className="hero-note">Free to use · No credit card required</p>
+              <p className="hero-note">Free • No API key needed</p>
             </div>
           </div>
         </section>
 
-        <section className="features">
-          <div className="feature">
-            <div className="feature-icon">✍️</div>
-            <h3>Compose Freely</h3>
-            <p>Write your thoughts naturally. Add as many tweets as you need to tell your story.</p>
-          </div>
-          <div className="feature">
-            <div className="feature-icon">👁️</div>
-            <h3>Preview First</h3>
-            <p>See exactly how your thread will look before publishing. No surprises.</p>
-          </div>
-          <div className="feature">
-            <div className="feature-icon">🚀</div>
-            <h3>One-Click Post</h3>
-            <p>Publish your entire thread instantly. Each tweet connects automatically.</p>
+        <section className="how">
+          <div className="how-inner">
+            <h2>How it works</h2>
+            <div className="how-steps">
+              <div className="how-step">
+                <div className="how-num">1</div>
+                <h3>Enter your idea</h3>
+                <p>Describe what you want to tweet about. A topic, a thought, or just a few keywords.</p>
+              </div>
+              <div className="how-step">
+                <div className="how-num">2</div>
+                <h3>Pick a tone</h3>
+                <p>Choose how you want it to sound — professional, witty, casual, or a hot take.</p>
+              </div>
+              <div className="how-step">
+                <div className="how-num">3</div>
+                <h3>Post to X</h3>
+                <p>Review the AI suggestions, edit if needed, and post directly to your account.</p>
+              </div>
+            </div>
           </div>
         </section>
 
-        <footer className="landing-footer">
-          <div className="footer-left">
-            <span className="footer-logo">Thread Composer</span>
-            <div className="footer-links">
-              <Link href="/terms" className="footer-link">Terms of Service</Link>
-              <Link href="/privacy" className="footer-link">Privacy Policy</Link>
-            </div>
+        <footer className="footer">
+          <span className="footer-brand">© 2025 TweetForge</span>
+          <div className="footer-links">
+            <Link href="/terms" className="footer-link">Terms</Link>
+            <Link href="/privacy" className="footer-link">Privacy</Link>
           </div>
-          <div className="footer-right">© 2025 Thread Composer</div>
         </footer>
       </div>
     );
   }
 
-  // App (logged in)
+  // App
   return (
     <div className="app">
-      <header className="app-header">
-        <div className="app-header-inner">
-          <div className="app-logo">
-            <div className="app-logo-icon">
-              <svg width="14" height="14" fill="white" viewBox="0 0 24 24">
-                <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
-              </svg>
+      <nav className="app-nav">
+        <div className="app-nav-inner">
+          <div className="app-brand">
+            <div className="app-brand-icon">
+              <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M12 2L2 19h20L12 2zm0 4l7 11H5l7-11z"/></svg>
             </div>
-            <span>Thread Composer</span>
+            <span>TweetForge</span>
           </div>
           <div className="app-user">
-            <span className="app-username">@{user.username}</span>
-            <button className="btn-logout" onClick={handleLogout}>Sign out</button>
+            <span className="app-handle">@{user.username}</span>
+            <button className="btn-out" onClick={handleLogout}>Sign out</button>
           </div>
         </div>
-      </header>
+      </nav>
 
       <main className="app-main">
-        {status && (
-          <div className={`toast toast-${status.type}`}>
-            {status.type === 'success' ? '✓' : '✕'} {status.message}
+        {toast && (
+          <div className={`toast toast-${toast.type}`}>
+            {toast.type === 'success' ? '✓' : '✕'} {toast.msg}
           </div>
         )}
 
-        <div className="composer">
-          <div className="composer-top">
-            <span className="composer-title">New Thread</span>
-            <span className="composer-count">{tweets.length} tweet{tweets.length > 1 ? 's' : ''}</span>
+        <div className="gen-card">
+          <div className="gen-header">
+            <h2>Generate a Tweet</h2>
           </div>
+          <div className="gen-body">
+            <div className="input-group">
+              <label className="input-label">What do you want to tweet about?</label>
+              <textarea
+                className="input-text"
+                placeholder="e.g., Launching my new SaaS product next week..."
+                value={topic}
+                onChange={e => setTopic(e.target.value)}
+              />
+            </div>
 
-          <div className="tweets">
-            {tweets.map((tweet, i) => (
-              <div key={tweet.id} className="tweet">
-                <div className="tweet-avatar">{user.name.charAt(0)}</div>
-                <div className="tweet-body">
-                  <div className="tweet-meta">
-                    <span className="tweet-name">{user.name}</span>
-                    <span className="tweet-handle">@{user.username}</span>
-                    <span className="tweet-num">{i + 1}/{tweets.length}</span>
-                  </div>
-                  <textarea
-                    ref={el => { textareaRefs.current[tweet.id] = el; }}
-                    className="tweet-input"
-                    placeholder={i === 0 ? "Start your thread..." : "Continue..."}
-                    value={tweet.text}
-                    onChange={e => handleTextareaChange(tweet.id, e)}
-                    rows={1}
-                  />
-                  <div className="tweet-bottom">
-                    <span className={`tweet-chars ${getCharClass(tweet.text)}`}>
-                      {getCharCount(tweet.text)}
-                    </span>
-                    {tweets.length > 1 && (
-                      <button className="tweet-remove" onClick={() => removeTweet(tweet.id)}>×</button>
-                    )}
-                  </div>
-                </div>
+            <div className="input-group">
+              <label className="input-label">Tone</label>
+              <div className="tone-grid">
+                {TONES.map(t => (
+                  <button
+                    key={t.id}
+                    className={`tone-btn ${tone === t.id ? 'active' : ''}`}
+                    onClick={() => setTone(t.id)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
 
-          <div className="composer-add">
-            <button className="btn-add" onClick={addTweet}>+ Add tweet</button>
-          </div>
-
-          <div className="composer-bottom">
-            <span className="composer-status">
-              {canPost() ? `Ready to post ${tweets.length} tweet${tweets.length > 1 ? 's' : ''}` : 'Complete all tweets to post'}
-            </span>
-            <div className="composer-actions">
-              <button className="btn btn-secondary" onClick={() => { setTweets([{ id: '1', text: '' }]); setStatus(null); }} disabled={posting}>
-                Clear
-              </button>
-              <button className="btn btn-primary" onClick={handlePost} disabled={!canPost() || posting}>
-                {posting ? 'Posting...' : 'Post Thread'}
+            <div className="gen-actions">
+              <button
+                className="btn-gen"
+                onClick={handleGenerate}
+                disabled={!topic.trim() || generating}
+              >
+                {generating ? (
+                  <>Generating...</>
+                ) : (
+                  <>✨ Generate Tweets</>
+                )}
               </button>
             </div>
+
+            {results.length > 0 && (
+              <div className="results">
+                <div className="results-title">Pick a tweet to edit & post</div>
+                {results.map((text, i) => (
+                  <div
+                    key={i}
+                    className={`result-item ${selected === i ? 'selected' : ''}`}
+                    onClick={() => selectResult(i)}
+                  >
+                    <div className="result-text">{text}</div>
+                    <div className="result-meta">
+                      <span className="result-chars">{text.length}/280</span>
+                      {selected === i && <span className="result-select">Selected</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {selected !== null && (
+              <div className="edit-section">
+                <div className="edit-label">
+                  <span>Edit before posting</span>
+                  <span className={`edit-chars ${charClass}`}>{charCount}</span>
+                </div>
+                <textarea
+                  className="edit-textarea"
+                  value={editText}
+                  onChange={e => setEditText(e.target.value)}
+                />
+                <div className="edit-actions">
+                  <button className="btn btn-ghost" onClick={() => { setSelected(null); setEditText(''); }}>
+                    Cancel
+                  </button>
+                  <button className="btn btn-post" onClick={handlePost} disabled={!canPost || posting}>
+                    {posting ? 'Posting...' : 'Post to X'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
 
       <footer className="app-footer">
         <div className="app-footer-inner">
-          <span className="app-footer-brand">Thread Composer</span>
+          <span className="app-footer-brand">TweetForge</span>
           <div className="app-footer-links">
             <Link href="/terms" className="app-footer-link">Terms</Link>
             <Link href="/privacy" className="app-footer-link">Privacy</Link>
@@ -289,9 +339,9 @@ export default function Home() {
 
       {posting && (
         <div className="posting-overlay">
-          <div className="posting-modal">
+          <div className="posting-box">
             <div className="spinner" />
-            <p>Posting your thread...</p>
+            <p>Posting to X...</p>
           </div>
         </div>
       )}

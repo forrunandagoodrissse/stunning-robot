@@ -2,33 +2,28 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Thread Composer | Write X Threads That Resonate',
-  description: 'The simplest way to compose, preview, and publish multi-tweet threads to X. No distractions, just your words.',
-  keywords: ['Twitter threads', 'X threads', 'tweet composer', 'thread writer', 'social media', 'content creator'],
-  authors: [{ name: 'Thread Composer' }],
+  title: 'TweetForge | AI Tweet Generator',
+  description: 'Generate viral tweets with AI. Enter your idea, pick a tone, and post directly to X.',
+  keywords: ['AI tweets', 'tweet generator', 'X', 'Twitter', 'social media AI', 'viral tweets'],
+  authors: [{ name: 'TweetForge' }],
   openGraph: {
-    title: 'Thread Composer',
-    description: 'Write X threads that resonate. Compose, preview, and publish effortlessly.',
+    title: 'TweetForge — AI Tweet Generator',
+    description: 'Generate tweets that go viral. AI-powered, direct posting to X.',
     type: 'website',
-    siteName: 'Thread Composer',
+    siteName: 'TweetForge',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Thread Composer',
-    description: 'Write X threads that resonate',
+    title: 'TweetForge',
+    description: 'Generate viral tweets with AI',
   },
   icons: {
     icon: '/favicon.svg',
     apple: '/apple-touch-icon.png',
   },
-  manifest: '/manifest.json',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>{children}</body>
