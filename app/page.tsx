@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 
 interface User {
   id: string;
@@ -14,19 +13,25 @@ interface TweetDraft {
   text: string;
 }
 
-export default function Composer() {
-  const router = useRouter();
+export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tweets, setTweets] = useState<TweetDraft[]>([
-    { id: '1', text: '' }
-  ]);
+  const [error, setError] = useState<string | null>(null);
+  const [tweets, setTweets] = useState<TweetDraft[]>([{ id: '1', text: '' }]);
   const [posting, setPosting] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>({});
 
   useEffect(() => {
     checkAuth();
+    
+    // Check for error in URL
+    const params = new URLSearchParams(window.location.search);
+    const errorParam = params.get('error');
+    if (errorParam) {
+      setError(`Authentication failed: ${errorParam}`);
+      window.history.replaceState({}, '', '/');
+    }
   }, []);
 
   const checkAuth = async () => {
@@ -35,21 +40,23 @@ export default function Composer() {
       const data = await res.json();
       if (data.user) {
         setUser(data.user);
-      } else {
-        router.push('/verify');
-        return;
       }
-    } catch (error) {
-      router.push('/verify');
-      return;
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleLogin = () => {
+    window.location.href = '/api/auth/login';
+  };
+
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/verify');
+    setUser(null);
+    setTweets([{ id: '1', text: '' }]);
+    setStatus(null);
   };
 
   const updateTweet = (id: string, text: string) => {
@@ -73,8 +80,6 @@ export default function Composer() {
   const handleTextareaChange = (id: string, e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const textarea = e.target;
     updateTweet(id, textarea.value);
-    
-    // Auto-resize
     textarea.style.height = 'auto';
     textarea.style.height = textarea.scrollHeight + 'px';
   };
@@ -115,12 +120,12 @@ export default function Composer() {
         setTweets([{ id: '1', text: '' }]);
       } else {
         if (res.status === 401) {
-          router.push('/verify');
+          setUser(null);
           return;
         }
         setStatus({ type: 'error', message: data.error || 'Failed to post thread' });
       }
-    } catch (error) {
+    } catch (err) {
       setStatus({ type: 'error', message: 'Network error. Please try again.' });
     } finally {
       setPosting(false);
@@ -140,11 +145,55 @@ export default function Composer() {
     );
   }
 
-  if (!user) return null;
+  // Not logged in - show login page
+  if (!user) {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <div className="login-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+              <path d="M3 17h18v2H3v-2zm0-7h18v2H3v-2zm0-7h18v2H3V3z"/>
+            </svg>
+          </div>
+          
+          <h1>Thread Composer</h1>
+          <p className="subtitle">Create and post X threads with ease</p>
+          
+          {error && <div className="login-error">{error}</div>}
+          
+          <button className="btn btn-primary login-btn" onClick={handleLogin}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+            Sign in with X
+          </button>
+          
+          <div className="login-features">
+            <div className="login-feature">
+              <span className="feature-icon">✓</span>
+              <span>Compose multi-tweet threads</span>
+            </div>
+            <div className="login-feature">
+              <span className="feature-icon">✓</span>
+              <span>Preview before posting</span>
+            </div>
+            <div className="login-feature">
+              <span className="feature-icon">✓</span>
+              <span>Post entire threads at once</span>
+            </div>
+            <div className="login-feature">
+              <span className="feature-icon">✓</span>
+              <span>Character count for each tweet</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
+  // Logged in - show composer
   return (
     <div className="app">
-      {/* Header */}
       <header className="header">
         <div className="header-inner">
           <div className="header-brand">
@@ -164,7 +213,6 @@ export default function Composer() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="main">
         {status && (
           <div className={`status status-${status.type}`}>
@@ -253,7 +301,6 @@ export default function Composer() {
         </div>
       </main>
 
-      {/* Posting Overlay */}
       {posting && (
         <div className="posting-overlay">
           <div className="posting-modal">
