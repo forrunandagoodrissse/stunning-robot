@@ -1,4 +1,4 @@
-// X OAuth 2.0 with PKCE implementation
+// X OAuth 2.0 with PKCE implementation (Read-only)
 
 const X_AUTH_URL = 'https://x.com/i/oauth2/authorize';
 const X_TOKEN_URL = 'https://api.x.com/2/oauth2/token';
@@ -23,7 +23,6 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
   const data = encoder.encode(verifier);
   const digest = await crypto.subtle.digest('SHA-256', data);
   
-  // Base64url encode
   const bytes = new Uint8Array(digest);
   let binary = '';
   for (let i = 0; i < bytes.byteLength; i++) {
@@ -38,7 +37,7 @@ export function generateState(): string {
   return generateRandomString(32);
 }
 
-// Build authorization URL
+// Build authorization URL (read-only scopes)
 export async function buildAuthUrl(
   codeVerifier: string,
   state: string
@@ -51,7 +50,7 @@ export async function buildAuthUrl(
     response_type: 'code',
     client_id: clientId!,
     redirect_uri: redirectUri,
-    scope: 'tweet.read tweet.write users.read offline.access',
+    scope: 'tweet.read users.read offline.access',
     state: state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
@@ -94,19 +93,38 @@ export async function exchangeCodeForTokens(
   return response.json();
 }
 
-// Get user info
+// Get full user info with metrics
 export async function getUserInfo(accessToken: string): Promise<{
   id: string;
   username: string;
   name: string;
+  description?: string;
+  profile_image_url?: string;
+  public_metrics?: {
+    followers_count: number;
+    following_count: number;
+    tweet_count: number;
+    listed_count: number;
+  };
+  created_at?: string;
+  location?: string;
+  url?: string;
+  verified?: boolean;
 }> {
-  const response = await fetch(`${X_API_URL}/users/me`, {
+  const fields = [
+    'id', 'username', 'name', 'description', 'profile_image_url',
+    'public_metrics', 'created_at', 'location', 'url', 'verified'
+  ].join(',');
+  
+  const response = await fetch(`${X_API_URL}/users/me?user.fields=${fields}`, {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
     },
   });
   
   if (!response.ok) {
+    const error = await response.text();
+    console.error('User info error:', error);
     throw new Error('Failed to fetch user info');
   }
   
@@ -114,28 +132,37 @@ export async function getUserInfo(accessToken: string): Promise<{
   return data.data;
 }
 
-// Post a tweet
-export async function postTweet(
-  accessToken: string,
-  text: string
-): Promise<{ id: string; text: string }> {
-  const response = await fetch(`${X_API_URL}/tweets`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ text }),
-  });
+// Get user's recent tweets
+export async function getUserTweets(accessToken: string, userId: string): Promise<{
+  id: string;
+  text: string;
+  created_at: string;
+  public_metrics?: {
+    like_count: number;
+    retweet_count: number;
+    reply_count: number;
+    impression_count: number;
+  };
+}[]> {
+  const fields = 'created_at,public_metrics';
+  
+  const response = await fetch(
+    `${X_API_URL}/users/${userId}/tweets?max_results=10&tweet.fields=${fields}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    }
+  );
   
   if (!response.ok) {
-    const error = await response.json();
-    console.error('Tweet post error:', error);
-    throw new Error(error.detail || error.title || 'Failed to post tweet');
+    const error = await response.text();
+    console.error('Tweets error:', error);
+    return [];
   }
   
   const data = await response.json();
-  return data.data;
+  return data.data || [];
 }
 
 // Refresh access token

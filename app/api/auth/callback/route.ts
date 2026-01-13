@@ -12,7 +12,6 @@ export async function GET(request: NextRequest) {
   
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   
-  // Handle OAuth errors
   if (error) {
     console.error('OAuth error:', error);
     return NextResponse.redirect(`${appUrl}/verify?error=${error}`);
@@ -25,7 +24,6 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
     
-    // Verify state to prevent CSRF attacks
     if (state !== session.state) {
       console.error('State mismatch');
       return NextResponse.redirect(`${appUrl}/verify?error=state_mismatch`);
@@ -39,17 +37,13 @@ export async function GET(request: NextRequest) {
     // Exchange code for tokens
     const tokens = await exchangeCodeForTokens(code, codeVerifier);
     
-    // Get user info
+    // Get full user info
     const userInfo = await getUserInfo(tokens.access_token);
     
-    // Store tokens and user info in session
+    // Store in session
     session.accessToken = tokens.access_token;
     session.refreshToken = tokens.refresh_token;
-    session.userId = userInfo.id;
-    session.username = userInfo.username;
-    session.name = userInfo.name;
-    
-    // Clear PKCE values
+    session.user = userInfo;
     session.codeVerifier = undefined;
     session.state = undefined;
     
