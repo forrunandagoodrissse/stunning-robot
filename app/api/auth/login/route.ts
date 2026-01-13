@@ -5,6 +5,14 @@ import { getRequestToken, buildAuthUrl } from '@/lib/x-oauth';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  // Check env vars first
+  if (!process.env.X_API_KEY || !process.env.X_API_SECRET) {
+    console.error('Missing X_API_KEY or X_API_SECRET');
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}?error=missing_api_keys`
+    );
+  }
+
   try {
     const session = await getSession();
     
@@ -20,10 +28,10 @@ export async function GET() {
     const authUrl = buildAuthUrl(oauth_token);
     
     return NextResponse.redirect(authUrl);
-  } catch (error) {
-    console.error('Login error:', error);
+  } catch (error: any) {
+    console.error('Login error:', error?.message || error);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}?error=login_failed`
+      `${process.env.NEXT_PUBLIC_APP_URL}?error=login_failed&detail=${encodeURIComponent(error?.message || 'unknown')}`
     );
   }
 }
