@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
-import { postTweet } from '@/lib/x-oauth';
+import { postTweet, refreshAccessToken } from '@/lib/x-oauth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     
-    if (!session.accessToken || !session.accessTokenSecret) {
+    if (!session.accessToken) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
@@ -32,13 +32,32 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const tweet = await postTweet(
-      session.accessToken,
-      session.accessTokenSecret,
-      text
-    );
-    
-    return NextResponse.json({ success: true, tweet });
+    try {
+      const tweet = await postTweet(session.accessToken, text);
+      return NextResponse.json({ success: true, tweet });
+    } catch (error: any) {
+      // If token expired, try to refresh
+      if (session.refreshToken) {
+        try {
+          const newTokens = await refreshAccessToken(session.refreshToken);
+          session.accessToken = newTokens.access_token;
+          session.refreshToken = newTokens.refresh_token;
+          await session.save();
+          
+          // Retry with new token
+          const tweet = await postTweet(session.accessToken, text);
+          return NextResponse.json({ success: true, tweet });
+        } catch (refreshError) {
+          // Refresh failed, user needs to re-authenticate
+          session.destroy();
+          return NextResponse.json(
+            { error: 'Session expired. Please log in again.' },
+            { status: 401 }
+          );
+        }
+      }
+      throw error;
+    }
   } catch (error: any) {
     console.error('Tweet error:', error);
     return NextResponse.json(
