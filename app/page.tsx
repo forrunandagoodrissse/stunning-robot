@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 
 interface User {
   id: string;
@@ -24,7 +25,6 @@ export default function Home() {
 
   useEffect(() => {
     checkAuth();
-    
     const params = new URLSearchParams(window.location.search);
     const errorParam = params.get('error');
     if (errorParam) {
@@ -37,9 +37,7 @@ export default function Home() {
     try {
       const res = await fetch('/api/auth/me');
       const data = await res.json();
-      if (data.user) {
-        setUser(data.user);
-      }
+      if (data.user) setUser(data.user);
     } catch (err) {
       console.error(err);
     } finally {
@@ -65,15 +63,11 @@ export default function Home() {
   const addTweet = () => {
     const newId = Date.now().toString();
     setTweets([...tweets, { id: newId, text: '' }]);
-    setTimeout(() => {
-      textareaRefs.current[newId]?.focus();
-    }, 50);
+    setTimeout(() => textareaRefs.current[newId]?.focus(), 50);
   };
 
   const removeTweet = (id: string) => {
-    if (tweets.length > 1) {
-      setTweets(tweets.filter(t => t.id !== id));
-    }
+    if (tweets.length > 1) setTweets(tweets.filter(t => t.id !== id));
   };
 
   const handleTextareaChange = (id: string, e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -84,228 +78,198 @@ export default function Home() {
   };
 
   const getCharCount = (text: string) => 280 - text.length;
-  
-  const getCharCountClass = (text: string) => {
-    const remaining = getCharCount(text);
-    if (remaining < 0) return 'danger';
-    if (remaining < 20) return 'warning';
+  const getCharClass = (text: string) => {
+    const r = getCharCount(text);
+    if (r < 0) return 'over';
+    if (r < 20) return 'warn';
     return '';
   };
 
-  const canPost = () => {
-    return tweets.every(t => t.text.trim().length > 0 && t.text.length <= 280);
-  };
+  const canPost = () => tweets.every(t => t.text.trim().length > 0 && t.text.length <= 280);
 
   const handlePost = async () => {
     if (!canPost()) return;
-    
     setPosting(true);
     setStatus(null);
-    
     try {
       const res = await fetch('/api/thread', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tweets: tweets.map(t => t.text) }),
       });
-      
       const data = await res.json();
-      
       if (res.ok) {
-        setStatus({ 
-          type: 'success', 
-          message: `Thread posted! ${tweets.length} tweet${tweets.length > 1 ? 's' : ''} published.` 
-        });
+        setStatus({ type: 'success', message: `Thread posted! ${tweets.length} tweet${tweets.length > 1 ? 's' : ''} published.` });
         setTweets([{ id: '1', text: '' }]);
       } else {
-        if (res.status === 401) {
-          setUser(null);
-          return;
-        }
+        if (res.status === 401) { setUser(null); return; }
         setStatus({ type: 'error', message: data.error || 'Failed to post thread' });
       }
-    } catch (err) {
+    } catch {
       setStatus({ type: 'error', message: 'Network error. Please try again.' });
     } finally {
       setPosting(false);
     }
   };
 
-  const clearAll = () => {
-    setTweets([{ id: '1', text: '' }]);
-    setStatus(null);
-  };
-
   if (loading) {
-    return (
-      <div className="loading">
-        <div className="spinner" />
-      </div>
-    );
+    return <div className="loading-screen"><div className="spinner" /></div>;
   }
 
-  // Not logged in - show login page
+  // Landing page (not logged in)
   if (!user) {
     return (
-      <div className="login-page">
-        <div className="login-hero">
-          <div className="login-container">
-            <div className="login-card">
-              <div className="login-icon">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="white">
-                  <path d="M3 17h18v2H3v-2zm0-7h18v2H3v-2zm0-7h18v2H3V3z"/>
-                </svg>
-              </div>
-              
-              <h1>Thread Composer</h1>
-              <p className="subtitle">Create and post beautiful threads to X with ease</p>
-              
-              {error && <div className="login-error">{error}</div>}
-              
-              <button className="btn btn-primary login-btn" onClick={handleLogin}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <div className="landing">
+        {error && <div className="landing-error">{error}</div>}
+        
+        <nav className="landing-nav">
+          <div className="nav-logo">
+            <div className="nav-logo-icon">
+              <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
+                <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+              </svg>
+            </div>
+            <span>Thread Composer</span>
+          </div>
+          <div className="nav-links">
+            <Link href="/terms" className="nav-link">Terms</Link>
+            <Link href="/privacy" className="nav-link">Privacy</Link>
+          </div>
+        </nav>
+
+        <section className="hero">
+          <div className="hero-grid" />
+          <div className="hero-content">
+            <div className="hero-badge">
+              <span className="hero-badge-dot" />
+              Now with thread scheduling
+            </div>
+            <h1>Write threads that <em>resonate</em></h1>
+            <p className="hero-subtitle">
+              The simplest way to compose, preview, and publish multi-tweet threads to X. 
+              No distractions, just your words.
+            </p>
+            <div className="hero-cta">
+              <button className="btn-hero" onClick={handleLogin}>
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                 </svg>
                 Sign in with X
               </button>
-              
-              <div className="login-features">
-                <div className="login-feature">
-                  <span className="feature-icon">✓</span>
-                  <span>Compose multi-tweet threads</span>
-                </div>
-                <div className="login-feature">
-                  <span className="feature-icon">✓</span>
-                  <span>Preview before posting</span>
-                </div>
-                <div className="login-feature">
-                  <span className="feature-icon">✓</span>
-                  <span>Post entire threads at once</span>
-                </div>
-                <div className="login-feature">
-                  <span className="feature-icon">✓</span>
-                  <span>Real-time character counter</span>
-                </div>
-              </div>
+              <p className="hero-note">Free to use · No credit card required</p>
             </div>
           </div>
-        </div>
-        
-        <footer className="login-footer">
-          <div className="login-footer-inner">
-            <p>
-              Thread Composer uses X OAuth to securely connect your account.
-              <br />We only request permission to post on your behalf.
-            </p>
+        </section>
+
+        <section className="features">
+          <div className="feature">
+            <div className="feature-icon">✍️</div>
+            <h3>Compose Freely</h3>
+            <p>Write your thoughts naturally. Add as many tweets as you need to tell your story.</p>
           </div>
+          <div className="feature">
+            <div className="feature-icon">👁️</div>
+            <h3>Preview First</h3>
+            <p>See exactly how your thread will look before publishing. No surprises.</p>
+          </div>
+          <div className="feature">
+            <div className="feature-icon">🚀</div>
+            <h3>One-Click Post</h3>
+            <p>Publish your entire thread instantly. Each tweet connects automatically.</p>
+          </div>
+        </section>
+
+        <footer className="landing-footer">
+          <div className="footer-left">
+            <span className="footer-logo">Thread Composer</span>
+            <div className="footer-links">
+              <Link href="/terms" className="footer-link">Terms of Service</Link>
+              <Link href="/privacy" className="footer-link">Privacy Policy</Link>
+            </div>
+          </div>
+          <div className="footer-right">© 2025 Thread Composer</div>
         </footer>
       </div>
     );
   }
 
-  // Logged in - show composer
+  // App (logged in)
   return (
     <div className="app">
-      <header className="header">
-        <div className="header-inner">
-          <div className="header-brand">
-            <div className="header-logo">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                <path d="M3 17h18v2H3v-2zm0-7h18v2H3v-2zm0-7h18v2H3V3z"/>
+      <header className="app-header">
+        <div className="app-header-inner">
+          <div className="app-logo">
+            <div className="app-logo-icon">
+              <svg width="14" height="14" fill="white" viewBox="0 0 24 24">
+                <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
               </svg>
             </div>
-            <span className="header-title">Thread Composer</span>
+            <span>Thread Composer</span>
           </div>
-          <div className="header-user">
-            <span className="header-username">@{user.username}</span>
-            <button className="btn btn-secondary btn-small" onClick={handleLogout}>
-              Sign out
-            </button>
+          <div className="app-user">
+            <span className="app-username">@{user.username}</span>
+            <button className="btn-logout" onClick={handleLogout}>Sign out</button>
           </div>
         </div>
       </header>
 
-      <main className="main">
+      <main className="app-main">
         {status && (
-          <div className={`status status-${status.type}`}>
-            <span>{status.type === 'success' ? '✓' : '✕'}</span>
-            {status.message}
+          <div className={`toast toast-${status.type}`}>
+            {status.type === 'success' ? '✓' : '✕'} {status.message}
           </div>
         )}
 
         <div className="composer">
-          <div className="composer-header">
-            <h2>New Thread</h2>
-            <span className="tweet-count">{tweets.length} tweet{tweets.length > 1 ? 's' : ''}</span>
+          <div className="composer-top">
+            <span className="composer-title">New Thread</span>
+            <span className="composer-count">{tweets.length} tweet{tweets.length > 1 ? 's' : ''}</span>
           </div>
 
-          <div className="tweets-list">
-            {tweets.map((tweet, index) => (
-              <div key={tweet.id} className="tweet-item">
-                <div className="tweet-avatar">
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="tweet-content">
-                  <div className="tweet-header">
+          <div className="tweets">
+            {tweets.map((tweet, i) => (
+              <div key={tweet.id} className="tweet">
+                <div className="tweet-avatar">{user.name.charAt(0)}</div>
+                <div className="tweet-body">
+                  <div className="tweet-meta">
                     <span className="tweet-name">{user.name}</span>
-                    <span className="tweet-username">@{user.username}</span>
-                    <span className="tweet-number">#{index + 1}</span>
+                    <span className="tweet-handle">@{user.username}</span>
+                    <span className="tweet-num">{i + 1}/{tweets.length}</span>
                   </div>
                   <textarea
-                    ref={(el) => { textareaRefs.current[tweet.id] = el; }}
-                    className="tweet-textarea"
-                    placeholder={index === 0 ? "Start your thread..." : "Continue the thread..."}
+                    ref={el => { textareaRefs.current[tweet.id] = el; }}
+                    className="tweet-input"
+                    placeholder={i === 0 ? "Start your thread..." : "Continue..."}
                     value={tweet.text}
-                    onChange={(e) => handleTextareaChange(tweet.id, e)}
+                    onChange={e => handleTextareaChange(tweet.id, e)}
                     rows={1}
                   />
-                  <div className="tweet-footer">
-                    <span className={`char-count ${getCharCountClass(tweet.text)}`}>
+                  <div className="tweet-bottom">
+                    <span className={`tweet-chars ${getCharClass(tweet.text)}`}>
                       {getCharCount(tweet.text)}
                     </span>
-                    <div className="tweet-actions">
-                      {tweets.length > 1 && (
-                        <button 
-                          className="btn btn-icon btn-danger"
-                          onClick={() => removeTweet(tweet.id)}
-                          title="Remove tweet"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
+                    {tweets.length > 1 && (
+                      <button className="tweet-remove" onClick={() => removeTweet(tweet.id)}>×</button>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="add-tweet-section">
-            <button className="add-tweet-btn" onClick={addTweet}>
-              <span>+</span> Add another tweet
-            </button>
+          <div className="composer-add">
+            <button className="btn-add" onClick={addTweet}>+ Add tweet</button>
           </div>
 
-          <div className="composer-footer">
-            <div className="post-info">
-              {canPost() 
-                ? `Ready to post ${tweets.length} tweet${tweets.length > 1 ? 's' : ''}`
-                : 'Complete all tweets to post'
-              }
-            </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button 
-                className="btn btn-secondary" 
-                onClick={clearAll}
-                disabled={posting}
-              >
+          <div className="composer-bottom">
+            <span className="composer-status">
+              {canPost() ? `Ready to post ${tweets.length} tweet${tweets.length > 1 ? 's' : ''}` : 'Complete all tweets to post'}
+            </span>
+            <div className="composer-actions">
+              <button className="btn btn-secondary" onClick={() => { setTweets([{ id: '1', text: '' }]); setStatus(null); }} disabled={posting}>
                 Clear
               </button>
-              <button 
-                className="btn btn-primary" 
-                onClick={handlePost}
-                disabled={!canPost() || posting}
-              >
+              <button className="btn btn-primary" onClick={handlePost} disabled={!canPost() || posting}>
                 {posting ? 'Posting...' : 'Post Thread'}
               </button>
             </div>
@@ -313,16 +277,12 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="footer">
-        <div className="footer-inner">
-          <div className="footer-brand">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 17h18v2H3v-2zm0-7h18v2H3v-2zm0-7h18v2H3V3z"/>
-            </svg>
-            <span>Thread Composer</span>
-          </div>
-          <div className="footer-links">
-            <span className="footer-link">Signed in as @{user.username}</span>
+      <footer className="app-footer">
+        <div className="app-footer-inner">
+          <span className="app-footer-brand">Thread Composer</span>
+          <div className="app-footer-links">
+            <Link href="/terms" className="app-footer-link">Terms</Link>
+            <Link href="/privacy" className="app-footer-link">Privacy</Link>
           </div>
         </div>
       </footer>
