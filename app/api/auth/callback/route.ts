@@ -1,57 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
-import { exchangeCodeForTokens, getUserInfo } from '@/lib/x-oauth';
+import { getAccessToken, getUserInfo } from '@/lib/x-oauth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const code = searchParams.get('code');
-  const state = searchParams.get('state');
-  const error = searchParams.get('error');
+  const oauthToken = searchParams.get('oauth_token');
+  const oauthVerifier = searchParams.get('oauth_verifier');
+  const denied = searchParams.get('denied');
   
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   
-  // Handle OAuth errors
-  if (error) {
-    console.error('OAuth error:', error);
-    return NextResponse.redirect(`${appUrl}?error=${error}`);
+  // User denied access
+  if (denied) {
+    return NextResponse.redirect(`${appUrl}?error=access_denied`);
   }
   
-  if (!code || !state) {
+  if (!oauthToken || !oauthVerifier) {
     return NextResponse.redirect(`${appUrl}?error=missing_params`);
   }
   
   try {
     const session = await getSession();
     
-    // Verify state to prevent CSRF attacks
-    if (state !== session.state) {
-      console.error('State mismatch');
-      return NextResponse.redirect(`${appUrl}?error=state_mismatch`);
+    // Verify oauth_token matches
+    if (oauthToken !== session.oauthToken) {
+      console.error('OAuth token mismatch');
+      return NextResponse.redirect(`${appUrl}?error=token_mismatch`);
     }
     
-    const codeVerifier = session.codeVerifier;
-    if (!codeVerifier) {
-      return NextResponse.redirect(`${appUrl}?error=missing_verifier`);
+    const oauthTokenSecret = session.oauthTokenSecret;
+    if (!oauthTokenSecret) {
+      return NextResponse.redirect(`${appUrl}?error=missing_token_secret`);
     }
     
-    // Exchange code for tokens
-    const tokens = await exchangeCodeForTokens(code, codeVerifier);
+    // Step 3: Exchange for access token
+    const accessData = await getAccessToken(
+      oauthToken,
+      oauthTokenSecret,
+      oauthVerifier
+    );
     
     // Get user info
-    const userInfo = await getUserInfo(tokens.access_token);
+    let userInfo;
+    try {
+      userInfo = await getUserInfo(accessData.oauth_token, accessData.oauth_token_secret);
+    } catch {
+      // Fallback to screen_name from access token response
+      userInfo = {
+        id: accessData.user_id,
+        username: accessData.screen_name,
+        name: accessData.screen_name,
+      };
+    }
     
-    // Store tokens and user info in session
-    session.accessToken = tokens.access_token;
-    session.refreshToken = tokens.refresh_token;
+    // Store in session
+    session.accessToken = accessData.oauth_token;
+    session.accessTokenSecret = accessData.oauth_token_secret;
     session.userId = userInfo.id;
     session.username = userInfo.username;
     session.name = userInfo.name;
     
-    // Clear PKCE values
-    session.codeVerifier = undefined;
-    session.state = undefined;
+    // Clear temporary tokens
+    session.oauthToken = undefined;
+    session.oauthTokenSecret = undefined;
     
     await session.save();
     

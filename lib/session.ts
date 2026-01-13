@@ -3,12 +3,13 @@ import { cookies } from 'next/headers';
 
 export interface SessionData {
   accessToken?: string;
-  refreshToken?: string;
+  accessTokenSecret?: string;
   username?: string;
   name?: string;
   userId?: string;
-  codeVerifier?: string;
-  state?: string;
+  // Temporary tokens during OAuth flow
+  oauthToken?: string;
+  oauthTokenSecret?: string;
 }
 
 const sessionOptions = {
