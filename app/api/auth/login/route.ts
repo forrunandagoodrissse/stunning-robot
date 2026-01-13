@@ -9,7 +9,7 @@ export async function GET() {
   if (!process.env.X_CLIENT_ID || !process.env.X_CLIENT_SECRET) {
     console.error('Missing X_CLIENT_ID or X_CLIENT_SECRET');
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}?error=missing_credentials`
+      `${process.env.NEXT_PUBLIC_APP_URL}/verify?error=missing_credentials`
     );
   }
 
@@ -32,7 +32,7 @@ export async function GET() {
   } catch (error: any) {
     console.error('Login error:', error?.message || error);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}?error=login_failed`
+      `${process.env.NEXT_PUBLIC_APP_URL}/verify?error=login_failed`
     );
   }
 }

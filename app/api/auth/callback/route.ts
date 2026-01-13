@@ -15,11 +15,11 @@ export async function GET(request: NextRequest) {
   // Handle OAuth errors
   if (error) {
     console.error('OAuth error:', error);
-    return NextResponse.redirect(`${appUrl}?error=${error}`);
+    return NextResponse.redirect(`${appUrl}/verify?error=${error}`);
   }
   
   if (!code || !state) {
-    return NextResponse.redirect(`${appUrl}?error=missing_params`);
+    return NextResponse.redirect(`${appUrl}/verify?error=missing_params`);
   }
   
   try {
@@ -28,12 +28,12 @@ export async function GET(request: NextRequest) {
     // Verify state to prevent CSRF attacks
     if (state !== session.state) {
       console.error('State mismatch');
-      return NextResponse.redirect(`${appUrl}?error=state_mismatch`);
+      return NextResponse.redirect(`${appUrl}/verify?error=state_mismatch`);
     }
     
     const codeVerifier = session.codeVerifier;
     if (!codeVerifier) {
-      return NextResponse.redirect(`${appUrl}?error=missing_verifier`);
+      return NextResponse.redirect(`${appUrl}/verify?error=missing_verifier`);
     }
     
     // Exchange code for tokens
@@ -58,6 +58,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(appUrl);
   } catch (error) {
     console.error('Callback error:', error);
-    return NextResponse.redirect(`${appUrl}?error=callback_failed`);
+    return NextResponse.redirect(`${appUrl}/verify?error=callback_failed`);
   }
 }

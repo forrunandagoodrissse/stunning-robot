@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface User {
   id: string;
@@ -9,6 +10,7 @@ interface User {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [tweetText, setTweetText] = useState('');
@@ -17,39 +19,32 @@ export default function Home() {
 
   useEffect(() => {
     checkAuth();
-    
-    // Check for error in URL params
-    const params = new URLSearchParams(window.location.search);
-    const error = params.get('error');
-    if (error) {
-      setStatus({ type: 'error', message: `Authentication failed: ${error}` });
-      // Clean up URL
-      window.history.replaceState({}, '', '/');
-    }
   }, []);
 
   const checkAuth = async () => {
     try {
       const res = await fetch('/api/auth/me');
       const data = await res.json();
-      setUser(data.user);
+      if (data.user) {
+        setUser(data.user);
+      } else {
+        // Not logged in, redirect to verify
+        router.push('/verify');
+        return;
+      }
     } catch (error) {
       console.error('Auth check failed:', error);
+      router.push('/verify');
+      return;
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogin = () => {
-    window.location.href = '/api/auth/login';
-  };
-
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
-      setUser(null);
-      setTweetText('');
-      setStatus(null);
+      router.push('/verify');
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -75,7 +70,8 @@ export default function Home() {
         setTweetText('');
       } else {
         if (res.status === 401) {
-          setUser(null);
+          router.push('/verify');
+          return;
         }
         setStatus({ type: 'error', message: data.error || 'Failed to post' });
       }
@@ -105,6 +101,10 @@ export default function Home() {
     );
   }
 
+  if (!user) {
+    return null; // Will redirect
+  }
+
   return (
     <>
       <div className="gradient-bg" />
@@ -116,91 +116,56 @@ export default function Home() {
         </div>
         <p className="tagline">Post to X with style</p>
 
-        {user ? (
-          <div className="card">
-            <div className="user-header">
-              <div className="user-info">
-                <div className="avatar">{user.name.charAt(0)}</div>
-                <div className="user-details">
-                  <h3>{user.name}</h3>
-                  <span>@{user.username}</span>
-                </div>
-              </div>
-              <button className="logout-btn" onClick={handleLogout}>
-                Sign out
-              </button>
-            </div>
-
-            <div className="compose-area">
-              <textarea
-                className="tweet-input"
-                placeholder="What's happening?"
-                value={tweetText}
-                onChange={(e) => setTweetText(e.target.value)}
-                maxLength={300}
-              />
-            </div>
-
-            <div className="compose-footer">
-              <span className={`char-counter ${getCharCountClass()}`}>
-                {280 - tweetText.length}
-              </span>
-              <button
-                className="btn btn-primary"
-                onClick={handlePost}
-                disabled={posting || !tweetText.trim() || tweetText.length > 280}
-              >
-                {posting ? (
-                  <>
-                    <span className="spinner" />
-                    Posting...
-                  </>
-                ) : (
-                  'Post'
-                )}
-              </button>
-            </div>
-
-            {status && (
-              <div className={`status ${status.type}`}>
-                {status.message}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="card login-card">
-            <h2>Welcome</h2>
-            <p>Connect your X account to start posting</p>
-            
-            <div className="features">
-              <div className="feature">
-                <div className="feature-icon">🔐</div>
-                <span>Secure OAuth 2.0 authentication</span>
-              </div>
-              <div className="feature">
-                <div className="feature-icon">✍️</div>
-                <span>Compose and post tweets instantly</span>
-              </div>
-              <div className="feature">
-                <div className="feature-icon">⚡</div>
-                <span>Fast and minimal interface</span>
+        <div className="card">
+          <div className="user-header">
+            <div className="user-info">
+              <div className="avatar">{user.name.charAt(0)}</div>
+              <div className="user-details">
+                <h3>{user.name}</h3>
+                <span>@{user.username}</span>
               </div>
             </div>
-
-            <button className="btn btn-login" onClick={handleLogin}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-              </svg>
-              Continue with X
+            <button className="logout-btn" onClick={handleLogout}>
+              Sign out
             </button>
-
-            {status && (
-              <div className={`status ${status.type}`}>
-                {status.message}
-              </div>
-            )}
           </div>
-        )}
+
+          <div className="compose-area">
+            <textarea
+              className="tweet-input"
+              placeholder="What's happening?"
+              value={tweetText}
+              onChange={(e) => setTweetText(e.target.value)}
+              maxLength={300}
+            />
+          </div>
+
+          <div className="compose-footer">
+            <span className={`char-counter ${getCharCountClass()}`}>
+              {280 - tweetText.length}
+            </span>
+            <button
+              className="btn btn-primary"
+              onClick={handlePost}
+              disabled={posting || !tweetText.trim() || tweetText.length > 280}
+            >
+              {posting ? (
+                <>
+                  <span className="spinner" />
+                  Posting...
+                </>
+              ) : (
+                'Post'
+              )}
+            </button>
+          </div>
+
+          {status && (
+            <div className={`status ${status.type}`}>
+              {status.message}
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
