@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'X Profile Dashboard',
-  description: 'View your X profile and analytics',
+  title: 'Thread Composer',
+  description: 'Compose and post X/Twitter threads with ease',
 }
 
 export default function RootLayout({
@@ -13,11 +13,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-      </head>
       <body>{children}</body>
     </html>
   )

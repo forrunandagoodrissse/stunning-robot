@@ -1,10 +1,9 @@
-// X OAuth 2.0 with PKCE implementation (Read-only)
+// X OAuth 2.0 with PKCE implementation
 
 const X_AUTH_URL = 'https://x.com/i/oauth2/authorize';
 const X_TOKEN_URL = 'https://api.x.com/2/oauth2/token';
 const X_API_URL = 'https://api.x.com/2';
 
-// Generate cryptographically secure random string
 function generateRandomString(length: number): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const array = new Uint8Array(length);
@@ -12,12 +11,10 @@ function generateRandomString(length: number): string {
   return Array.from(array, (byte) => chars[byte % chars.length]).join('');
 }
 
-// Generate code verifier for PKCE
 export function generateCodeVerifier(): string {
   return generateRandomString(64);
 }
 
-// Generate code challenge from verifier using SHA-256
 export async function generateCodeChallenge(verifier: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
@@ -32,12 +29,11 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-// Generate state for CSRF protection
 export function generateState(): string {
   return generateRandomString(32);
 }
 
-// Build authorization URL (read-only scopes)
+// Build authorization URL with write scopes
 export async function buildAuthUrl(
   codeVerifier: string,
   state: string
@@ -50,7 +46,7 @@ export async function buildAuthUrl(
     response_type: 'code',
     client_id: clientId!,
     redirect_uri: redirectUri,
-    scope: 'tweet.read users.read offline.access',
+    scope: 'tweet.read tweet.write users.read offline.access',
     state: state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
@@ -59,7 +55,6 @@ export async function buildAuthUrl(
   return `${X_AUTH_URL}?${params.toString()}`;
 }
 
-// Exchange authorization code for tokens
 export async function exchangeCodeForTokens(
   code: string,
   codeVerifier: string
@@ -93,30 +88,12 @@ export async function exchangeCodeForTokens(
   return response.json();
 }
 
-// Get full user info with metrics
 export async function getUserInfo(accessToken: string): Promise<{
   id: string;
   username: string;
   name: string;
-  description?: string;
-  profile_image_url?: string;
-  public_metrics?: {
-    followers_count: number;
-    following_count: number;
-    tweet_count: number;
-    listed_count: number;
-  };
-  created_at?: string;
-  location?: string;
-  url?: string;
-  verified?: boolean;
 }> {
-  const fields = [
-    'id', 'username', 'name', 'description', 'profile_image_url',
-    'public_metrics', 'created_at', 'location', 'url', 'verified'
-  ].join(',');
-  
-  const response = await fetch(`${X_API_URL}/users/me?user.fields=${fields}`, {
+  const response = await fetch(`${X_API_URL}/users/me`, {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
     },
@@ -132,40 +109,37 @@ export async function getUserInfo(accessToken: string): Promise<{
   return data.data;
 }
 
-// Get user's recent tweets
-export async function getUserTweets(accessToken: string, userId: string): Promise<{
-  id: string;
-  text: string;
-  created_at: string;
-  public_metrics?: {
-    like_count: number;
-    retweet_count: number;
-    reply_count: number;
-    impression_count: number;
-  };
-}[]> {
-  const fields = 'created_at,public_metrics';
+// Post a tweet, optionally as a reply
+export async function postTweet(
+  accessToken: string, 
+  text: string,
+  replyToId?: string
+): Promise<{ id: string; text: string }> {
+  const body: { text: string; reply?: { in_reply_to_tweet_id: string } } = { text };
   
-  const response = await fetch(
-    `${X_API_URL}/users/${userId}/tweets?max_results=10&tweet.fields=${fields}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    }
-  );
+  if (replyToId) {
+    body.reply = { in_reply_to_tweet_id: replyToId };
+  }
+  
+  const response = await fetch(`${X_API_URL}/tweets`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
   
   if (!response.ok) {
     const error = await response.text();
-    console.error('Tweets error:', error);
-    return [];
+    console.error('Post tweet error:', error);
+    throw new Error(`Failed to post tweet: ${error}`);
   }
   
   const data = await response.json();
-  return data.data || [];
+  return data.data;
 }
 
-// Refresh access token
 export async function refreshAccessToken(refreshToken: string): Promise<{
   access_token: string;
   refresh_token: string;

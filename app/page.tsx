@@ -1,71 +1,47 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface User {
   id: string;
   username: string;
   name: string;
-  description?: string;
-  profile_image_url?: string;
-  public_metrics?: {
-    followers_count: number;
-    following_count: number;
-    tweet_count: number;
-    listed_count: number;
-  };
-  created_at?: string;
-  location?: string;
-  url?: string;
-  verified?: boolean;
 }
 
-interface Tweet {
+interface TweetDraft {
   id: string;
   text: string;
-  created_at: string;
-  public_metrics?: {
-    like_count: number;
-    retweet_count: number;
-    reply_count: number;
-    impression_count: number;
-  };
 }
 
-export default function Dashboard() {
+export default function Composer() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [tweets, setTweets] = useState<Tweet[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [tweets, setTweets] = useState<TweetDraft[]>([
+    { id: '1', text: '' }
+  ]);
+  const [posting, setPosting] = useState(false);
+  const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>({});
 
   useEffect(() => {
-    loadData();
+    checkAuth();
   }, []);
 
-  const loadData = async () => {
+  const checkAuth = async () => {
     try {
-      // Check auth and get user data
       const res = await fetch('/api/auth/me');
       const data = await res.json();
-      
-      if (!data.user) {
+      if (data.user) {
+        setUser(data.user);
+      } else {
         router.push('/verify');
         return;
       }
-      
-      setUser(data.user);
-      
-      // Load tweets
-      const tweetsRes = await fetch('/api/tweets');
-      const tweetsData = await tweetsRes.json();
-      if (tweetsData.tweets) {
-        setTweets(tweetsData.tweets);
-      }
-    } catch (err) {
-      setError('Failed to load data');
-      console.error(err);
+    } catch (error) {
+      router.push('/verify');
+      return;
     } finally {
       setLoading(false);
     }
@@ -76,23 +52,89 @@ export default function Dashboard() {
     router.push('/verify');
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+  const updateTweet = (id: string, text: string) => {
+    setTweets(tweets.map(t => t.id === id ? { ...t, text } : t));
   };
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
+  const addTweet = () => {
+    const newId = Date.now().toString();
+    setTweets([...tweets, { id: newId, text: '' }]);
+    setTimeout(() => {
+      textareaRefs.current[newId]?.focus();
+    }, 50);
+  };
+
+  const removeTweet = (id: string) => {
+    if (tweets.length > 1) {
+      setTweets(tweets.filter(t => t.id !== id));
+    }
+  };
+
+  const handleTextareaChange = (id: string, e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const textarea = e.target;
+    updateTweet(id, textarea.value);
+    
+    // Auto-resize
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+  };
+
+  const getCharCount = (text: string) => 280 - text.length;
+  
+  const getCharCountClass = (text: string) => {
+    const remaining = getCharCount(text);
+    if (remaining < 0) return 'danger';
+    if (remaining < 20) return 'warning';
+    return '';
+  };
+
+  const canPost = () => {
+    return tweets.every(t => t.text.trim().length > 0 && t.text.length <= 280);
+  };
+
+  const handlePost = async () => {
+    if (!canPost()) return;
+    
+    setPosting(true);
+    setStatus(null);
+    
+    try {
+      const res = await fetch('/api/thread', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tweets: tweets.map(t => t.text) }),
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        setStatus({ 
+          type: 'success', 
+          message: `Thread posted successfully! ${tweets.length} tweet${tweets.length > 1 ? 's' : ''} published.` 
+        });
+        setTweets([{ id: '1', text: '' }]);
+      } else {
+        if (res.status === 401) {
+          router.push('/verify');
+          return;
+        }
+        setStatus({ type: 'error', message: data.error || 'Failed to post thread' });
+      }
+    } catch (error) {
+      setStatus({ type: 'error', message: 'Network error. Please try again.' });
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const clearAll = () => {
+    setTweets([{ id: '1', text: '' }]);
+    setStatus(null);
   };
 
   if (loading) {
     return (
-      <div className="loading-container">
+      <div className="loading">
         <div className="spinner" />
       </div>
     );
@@ -101,133 +143,125 @@ export default function Dashboard() {
   if (!user) return null;
 
   return (
-    <div className="app-container">
-      <div className="main-content">
-        {/* Header */}
-        <header className="header">
-          <div className="header-content">
-            <h1>{user.name}</h1>
-            <div className="header-actions">
-              <button className="btn btn-danger" onClick={handleLogout}>
-                Sign out
-              </button>
+    <div className="app">
+      {/* Header */}
+      <header className="header">
+        <div className="header-inner">
+          <div className="header-brand">
+            <div className="header-logo">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M3 17h18v2H3v-2zm0-7h18v2H3v-2zm0-7h18v2H3V3z"/>
+              </svg>
             </div>
+            <span className="header-title">Thread Composer</span>
           </div>
-        </header>
-
-        {error && <div className="error-message">{error}</div>}
-
-        {/* Profile Section */}
-        <section className="profile-section">
-          <div className="profile-banner" />
-          <div className="profile-info">
-            <div className="profile-avatar">
-              {user.name?.charAt(0).toUpperCase()}
-            </div>
-            <div className="profile-names">
-              <div className="profile-name">
-                {user.name}
-                {user.verified && ' ✓'}
-              </div>
-              <div className="profile-username">@{user.username}</div>
-            </div>
-            
-            {user.description && (
-              <p className="profile-bio">{user.description}</p>
-            )}
-            
-            <div className="profile-meta">
-              {user.location && (
-                <span className="profile-meta-item">
-                  📍 {user.location}
-                </span>
-              )}
-              {user.created_at && (
-                <span className="profile-meta-item">
-                  📅 Joined {formatDate(user.created_at)}
-                </span>
-              )}
-            </div>
-            
-            {user.public_metrics && (
-              <div className="profile-stats">
-                <span className="profile-stat">
-                  <strong>{formatNumber(user.public_metrics.following_count)}</strong>
-                  <span> Following</span>
-                </span>
-                <span className="profile-stat">
-                  <strong>{formatNumber(user.public_metrics.followers_count)}</strong>
-                  <span> Followers</span>
-                </span>
-              </div>
-            )}
+          <div className="header-user">
+            <span className="header-username">@{user.username}</span>
+            <button className="btn btn-secondary btn-small" onClick={handleLogout}>
+              Sign out
+            </button>
           </div>
-        </section>
+        </div>
+      </header>
 
-        {/* Stats Grid */}
-        {user.public_metrics && (
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-card-value">
-                {formatNumber(user.public_metrics.tweet_count)}
-              </div>
-              <div className="stat-card-label">Posts</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-card-value">
-                {formatNumber(user.public_metrics.followers_count)}
-              </div>
-              <div className="stat-card-label">Followers</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-card-value">
-                {formatNumber(user.public_metrics.following_count)}
-              </div>
-              <div className="stat-card-label">Following</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-card-value">
-                {formatNumber(user.public_metrics.listed_count)}
-              </div>
-              <div className="stat-card-label">Listed</div>
-            </div>
+      {/* Main Content */}
+      <main className="main">
+        {status && (
+          <div className={`status status-${status.type}`}>
+            <span>{status.type === 'success' ? '✓' : '✕'}</span>
+            {status.message}
           </div>
         )}
 
-        {/* Recent Tweets */}
-        <section>
-          <div className="section-header">
-            <h2>Recent Posts</h2>
+        <div className="composer">
+          <div className="composer-header">
+            <h2>New Thread</h2>
+            <span className="tweet-count">{tweets.length} tweet{tweets.length > 1 ? 's' : ''}</span>
           </div>
-          
-          {tweets.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">📝</div>
-              <p>No recent posts to display</p>
-            </div>
-          ) : (
-            tweets.map((tweet) => (
-              <article key={tweet.id} className="tweet">
-                <p className="tweet-content">{tweet.text}</p>
-                {tweet.public_metrics && (
-                  <div className="tweet-meta">
-                    <span className="tweet-stat">
-                      ❤️ {formatNumber(tweet.public_metrics.like_count)}
-                    </span>
-                    <span className="tweet-stat">
-                      🔁 {formatNumber(tweet.public_metrics.retweet_count)}
-                    </span>
-                    <span className="tweet-stat">
-                      💬 {formatNumber(tweet.public_metrics.reply_count)}
-                    </span>
+
+          <div className="tweets-list">
+            {tweets.map((tweet, index) => (
+              <div key={tweet.id} className="tweet-item">
+                <div className="tweet-avatar">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="tweet-content">
+                  <div className="tweet-header">
+                    <span className="tweet-name">{user.name}</span>
+                    <span className="tweet-username">@{user.username}</span>
+                    <span className="tweet-number">#{index + 1}</span>
                   </div>
-                )}
-                <div className="tweet-date">{formatDate(tweet.created_at)}</div>
-              </article>
-            ))
-          )}
-        </section>
-      </div>
+                  <textarea
+                    ref={(el) => { textareaRefs.current[tweet.id] = el; }}
+                    className="tweet-textarea"
+                    placeholder={index === 0 ? "Start your thread..." : "Continue the thread..."}
+                    value={tweet.text}
+                    onChange={(e) => handleTextareaChange(tweet.id, e)}
+                    rows={1}
+                  />
+                  <div className="tweet-footer">
+                    <span className={`char-count ${getCharCountClass(tweet.text)}`}>
+                      {getCharCount(tweet.text)}
+                    </span>
+                    <div className="tweet-actions">
+                      {tweets.length > 1 && (
+                        <button 
+                          className="btn btn-icon btn-danger"
+                          onClick={() => removeTweet(tweet.id)}
+                          title="Remove tweet"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="add-tweet-section">
+            <button className="add-tweet-btn" onClick={addTweet}>
+              <span>+</span> Add another tweet
+            </button>
+          </div>
+
+          <div className="composer-footer">
+            <div className="post-info">
+              {canPost() 
+                ? `Ready to post ${tweets.length} tweet${tweets.length > 1 ? 's' : ''}`
+                : 'Complete all tweets to post'
+              }
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={clearAll}
+                disabled={posting}
+              >
+                Clear
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={handlePost}
+                disabled={!canPost() || posting}
+              >
+                {posting ? 'Posting...' : 'Post Thread'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Posting Overlay */}
+      {posting && (
+        <div className="posting-overlay">
+          <div className="posting-modal">
+            <div className="spinner" />
+            <p>Posting your thread...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

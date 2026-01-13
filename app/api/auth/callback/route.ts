@@ -34,16 +34,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${appUrl}/verify?error=missing_verifier`);
     }
     
-    // Exchange code for tokens
     const tokens = await exchangeCodeForTokens(code, codeVerifier);
-    
-    // Get full user info
     const userInfo = await getUserInfo(tokens.access_token);
     
-    // Store in session
     session.accessToken = tokens.access_token;
     session.refreshToken = tokens.refresh_token;
-    session.user = userInfo;
+    session.userId = userInfo.id;
+    session.username = userInfo.username;
+    session.name = userInfo.name;
     session.codeVerifier = undefined;
     session.state = undefined;
     
