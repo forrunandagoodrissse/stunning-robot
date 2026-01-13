@@ -75,8 +75,8 @@ export async function getRequestToken(): Promise<{
   oauth_token: string;
   oauth_token_secret: string;
 }> {
-  const consumerKey = process.env.X_API_KEY!;
-  const consumerSecret = process.env.X_API_SECRET!;
+  const consumerKey = process.env.X_CLIENT_ID!;
+  const consumerSecret = process.env.X_CLIENT_SECRET!;
   const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`;
 
   const oauthParams: Record<string, string> = {
@@ -135,8 +135,8 @@ export async function getAccessToken(
   user_id: string;
   screen_name: string;
 }> {
-  const consumerKey = process.env.X_API_KEY!;
-  const consumerSecret = process.env.X_API_SECRET!;
+  const consumerKey = process.env.X_CLIENT_ID!;
+  const consumerSecret = process.env.X_CLIENT_SECRET!;
 
   const oauthParams: Record<string, string> = {
     oauth_consumer_key: consumerKey,
@@ -188,8 +188,8 @@ export async function postTweet(
   accessTokenSecret: string,
   text: string
 ): Promise<{ id: string; text: string }> {
-  const consumerKey = process.env.X_API_KEY!;
-  const consumerSecret = process.env.X_API_SECRET!;
+  const consumerKey = process.env.X_CLIENT_ID!;
+  const consumerSecret = process.env.X_CLIENT_SECRET!;
   const url = `${X_API_URL}/tweets`;
 
   const oauthParams: Record<string, string> = {
@@ -234,8 +234,8 @@ export async function getUserInfo(
   accessToken: string,
   accessTokenSecret: string
 ): Promise<{ id: string; username: string; name: string }> {
-  const consumerKey = process.env.X_API_KEY!;
-  const consumerSecret = process.env.X_API_SECRET!;
+  const consumerKey = process.env.X_CLIENT_ID!;
+  const consumerSecret = process.env.X_CLIENT_SECRET!;
   const url = `${X_API_URL}/users/me`;
 
   const oauthParams: Record<string, string> = {

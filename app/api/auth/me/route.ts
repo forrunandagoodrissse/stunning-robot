@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const session = await getSession();
     
-    if (!session.accessToken) {
+    if (!session.accessToken || !session.accessTokenSecret) {
       return NextResponse.json({ user: null });
     }
     
