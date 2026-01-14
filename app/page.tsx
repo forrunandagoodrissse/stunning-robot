@@ -20,6 +20,8 @@ const TONES = [
   { id: 'promotional', label: 'Promo' },
 ];
 
+const MAX_LENGTH = 280;
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,7 +122,7 @@ export default function Home() {
       });
       const data = await res.json();
       if (res.ok) {
-        setToast({ type: 'success', msg: 'Tweet posted!' });
+        setToast({ type: 'success', msg: 'Posted to X!' });
         setResults([]);
         setSelected(null);
         setEditText('');
@@ -151,7 +153,7 @@ export default function Home() {
             <div className="nav-icon">
               <svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M12 2L2 19h20L12 2zm0 4l7 11H5l7-11z"/></svg>
             </div>
-            <span>TweetForge</span>
+            <span>PostForge</span>
           </div>
           <div className="nav-links">
             <Link href="/terms" className="nav-link">Terms</Link>
@@ -163,9 +165,9 @@ export default function Home() {
           <div className="hero-glow" />
           <div className="hero-content">
             <div className="hero-pill">✨ AI-Powered</div>
-            <h1>Generate tweets that <span className="gradient">go viral</span></h1>
+            <h1>Generate posts that <span className="gradient">go viral</span></h1>
             <p className="hero-sub">
-              Enter your idea, pick a tone, and let AI craft the perfect tweet. 
+              Enter your idea, pick a tone, and let AI craft the perfect post. 
               Edit, refine, and post directly to X.
             </p>
             <div className="hero-cta">
@@ -187,7 +189,7 @@ export default function Home() {
               <div className="how-step">
                 <div className="how-num">1</div>
                 <h3>Enter your idea</h3>
-                <p>Describe what you want to tweet about. A topic, a thought, or just a few keywords.</p>
+                <p>Describe what you want to post about. A topic, a thought, or just a few keywords.</p>
               </div>
               <div className="how-step">
                 <div className="how-num">2</div>
@@ -204,7 +206,7 @@ export default function Home() {
         </section>
 
         <footer className="footer">
-          <span className="footer-brand">© 2025 TweetForge</span>
+          <span className="footer-brand">© 2025 PostForge</span>
           <div className="footer-links">
             <Link href="/terms" className="footer-link">Terms</Link>
             <Link href="/privacy" className="footer-link">Privacy</Link>
@@ -223,7 +225,7 @@ export default function Home() {
             <div className="app-brand-icon">
               <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M12 2L2 19h20L12 2zm0 4l7 11H5l7-11z"/></svg>
             </div>
-            <span>TweetForge</span>
+            <span>PostForge</span>
           </div>
           <div className="app-user">
             <span className="app-handle">@{user.username}</span>
@@ -241,11 +243,11 @@ export default function Home() {
 
         <div className="gen-card">
           <div className="gen-header">
-            <h2>Generate a Tweet</h2>
+            <h2>Generate a Post</h2>
           </div>
           <div className="gen-body">
             <div className="input-group">
-              <label className="input-label">What do you want to tweet about?</label>
+              <label className="input-label">What do you want to post about?</label>
               <textarea
                 className="input-text"
                 placeholder="e.g., Launching my new SaaS product next week..."
@@ -278,14 +280,14 @@ export default function Home() {
                 {generating ? (
                   <>Generating...</>
                 ) : (
-                  <>✨ Generate Tweets</>
+                  <>✨ Generate Posts</>
                 )}
               </button>
             </div>
 
             {results.length > 0 && (
               <div className="results">
-                <div className="results-title">Pick a tweet to edit & post</div>
+                <div className="results-title">Pick a post to edit & publish</div>
                 {results.map((text, i) => (
                   <div
                     key={i}
@@ -329,7 +331,7 @@ export default function Home() {
 
       <footer className="app-footer">
         <div className="app-footer-inner">
-          <span className="app-footer-brand">TweetForge</span>
+          <span className="app-footer-brand">PostForge</span>
           <div className="app-footer-links">
             <Link href="/terms" className="app-footer-link">Terms</Link>
             <Link href="/privacy" className="app-footer-link">Privacy</Link>

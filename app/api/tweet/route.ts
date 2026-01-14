@@ -15,11 +15,11 @@ export async function POST(request: NextRequest) {
     const { text } = await request.json();
 
     if (!text || typeof text !== 'string') {
-      return NextResponse.json({ error: 'Tweet text is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Post text is required' }, { status: 400 });
     }
 
     if (text.length > 280) {
-      return NextResponse.json({ error: 'Tweet exceeds 280 characters' }, { status: 400 });
+      return NextResponse.json({ error: 'Post exceeds 280 characters' }, { status: 400 });
     }
 
     try {
@@ -41,11 +41,11 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      console.error('Tweet error:', error);
-      return NextResponse.json({ error: 'Failed to post tweet' }, { status: 500 });
+      console.error('Post error:', error);
+      return NextResponse.json({ error: 'Failed to post' }, { status: 500 });
     }
   } catch (error) {
-    console.error('Tweet route error:', error);
-    return NextResponse.json({ error: 'Failed to post tweet' }, { status: 500 });
+    console.error('Post route error:', error);
+    return NextResponse.json({ error: 'Failed to post' }, { status: 500 });
   }
 }

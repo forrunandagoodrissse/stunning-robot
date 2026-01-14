@@ -14,6 +14,8 @@ const TONE_PROMPTS: Record<string, string> = {
   promotional: 'promotional but not salesy, highlighting value',
 };
 
+const MAX_POST_LENGTH = 280;
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
@@ -34,17 +36,17 @@ export async function POST(request: NextRequest) {
     
     if (!openaiKey) {
       // Fallback: generate simple variations without AI
-      const tweets = generateFallbackTweets(topic, tone);
-      return NextResponse.json({ tweets });
+      const posts = generateFallbackPosts(topic, tone);
+      return NextResponse.json({ tweets: posts });
     }
 
     // Use OpenAI
-    const prompt = `Generate 3 unique tweets about the following topic. Each tweet should be ${toneDescription}. Keep each under 280 characters. Do not use hashtags unless specifically relevant. Do not use emojis excessively.
+    const prompt = `Generate 3 unique posts for X (formerly Twitter) about the following topic. Each post should be ${toneDescription}. Keep each under ${MAX_POST_LENGTH} characters. Do not use hashtags unless specifically relevant. Do not use emojis excessively.
 
 Topic: ${topic}
 
 Return ONLY a JSON array of 3 strings, nothing else. Example format:
-["Tweet 1 text here", "Tweet 2 text here", "Tweet 3 text here"]`;
+["Post 1 text here", "Post 2 text here", "Post 3 text here"]`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -55,7 +57,7 @@ Return ONLY a JSON array of 3 strings, nothing else. Example format:
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are a social media expert who writes engaging tweets. Always respond with valid JSON only.' },
+          { role: 'system', content: 'You are a social media expert who writes engaging posts for X. Always respond with valid JSON only.' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.8,
@@ -66,25 +68,25 @@ Return ONLY a JSON array of 3 strings, nothing else. Example format:
     if (!response.ok) {
       console.error('OpenAI error:', await response.text());
       // Fallback on error
-      const tweets = generateFallbackTweets(topic, tone);
-      return NextResponse.json({ tweets });
+      const posts = generateFallbackPosts(topic, tone);
+      return NextResponse.json({ tweets: posts });
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
 
     try {
-      const tweets = JSON.parse(content);
-      if (Array.isArray(tweets) && tweets.length > 0) {
-        return NextResponse.json({ tweets: tweets.slice(0, 3) });
+      const posts = JSON.parse(content);
+      if (Array.isArray(posts) && posts.length > 0) {
+        return NextResponse.json({ tweets: posts.slice(0, 3) });
       }
     } catch {
       console.error('Failed to parse OpenAI response:', content);
     }
 
     // Fallback
-    const tweets = generateFallbackTweets(topic, tone);
-    return NextResponse.json({ tweets });
+    const posts = generateFallbackPosts(topic, tone);
+    return NextResponse.json({ tweets: posts });
 
   } catch (error) {
     console.error('Generate error:', error);
@@ -92,7 +94,7 @@ Return ONLY a JSON array of 3 strings, nothing else. Example format:
   }
 }
 
-function generateFallbackTweets(topic: string, tone: string): string[] {
+function generateFallbackPosts(topic: string, tone: string): string[] {
   const cleanTopic = topic.trim().slice(0, 200);
   
   const templates: Record<string, string[]> = {

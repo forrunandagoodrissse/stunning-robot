@@ -1,14 +1,14 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Privacy Policy | TweetForge',
+  title: 'Privacy Policy | PostForge',
 };
 
 export default function PrivacyPage() {
   return (
     <div className="legal">
       <header className="legal-header">
-        <Link href="/" className="legal-back">← Back to TweetForge</Link>
+        <Link href="/" className="legal-back">← Back to PostForge</Link>
       </header>
 
       <main className="legal-main">
@@ -17,7 +17,7 @@ export default function PrivacyPage() {
 
         <h2>Overview</h2>
         <p>
-          TweetForge respects your privacy. This policy explains what data we collect 
+          PostForge respects your privacy. This policy explains what data we collect 
           and how we use it.
         </p>
 
@@ -25,7 +25,7 @@ export default function PrivacyPage() {
         <ul>
           <li><strong>X Account Info:</strong> Username, display name, and user ID when you sign in</li>
           <li><strong>Auth Tokens:</strong> Encrypted tokens to post on your behalf</li>
-          <li><strong>Prompts:</strong> Topics you enter for tweet generation (not stored permanently)</li>
+          <li><strong>Prompts:</strong> Topics you enter for post generation (not stored permanently)</li>
         </ul>
 
         <h2>What We Don't Collect</h2>
@@ -39,13 +39,13 @@ export default function PrivacyPage() {
         <h2>How We Use Data</h2>
         <ul>
           <li>Authenticate you with X</li>
-          <li>Generate tweets based on your prompts</li>
-          <li>Post tweets when you request it</li>
+          <li>Generate posts based on your prompts</li>
+          <li>Publish posts when you request it</li>
         </ul>
 
         <h2>AI Processing</h2>
         <p>
-          Your prompts are sent to AI services (OpenAI) to generate tweets. These 
+          Your prompts are sent to AI services (OpenAI) to generate posts. These 
           prompts are processed in real-time and not stored by us after generation.
         </p>
 
@@ -69,7 +69,7 @@ export default function PrivacyPage() {
         </ul>
       </main>
 
-      <footer className="legal-footer">© 2025 TweetForge</footer>
+      <footer className="legal-footer">© 2025 PostForge</footer>
     </div>
   );
 }
